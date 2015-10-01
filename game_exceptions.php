@@ -3,7 +3,7 @@
 class GameException extends Exception {}
 
 // General Exceptions
-class GameEndedException extends GameException { protected $message = "Strategy not specified"; }
+class GameEndedException extends GameException { protected $message = "Game has ended already."; }
 
 
 // Strategy Exceptions

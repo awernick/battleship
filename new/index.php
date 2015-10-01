@@ -12,4 +12,4 @@ try {
 catch(GameException $e) {
   echo json_encode(["response" => false, "reason" => $e->getMessage()]);
 }
-
+?>

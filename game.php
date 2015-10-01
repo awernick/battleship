@@ -16,11 +16,13 @@ class Game {
   const Random = "random";
   const Sweep = "sweep";
   const Smart = "smart";
- 
+  
+ // static $strategies = [SmartStrategy::getName(), RandomStrategy::getName(), SweepStrategy::getName()];
+
   // Class variables
   static $options = [
-    "size" => 10, 
-    "strategies" => [self::Smart, self::Random, self::Sweep],
+    "size" => Board::SIZE, 
+    "strategies" => [SmartStrategy::$name, RandomStrategy::$name, SweepStrategy::$name],
     "ships" => [
       ["name" => AircraftCarrier::NAME, "size" => AircraftCarrier::SIZE],
       ["name" => Battleship::NAME, "size" => Battleship::SIZE],
@@ -63,7 +65,7 @@ class Game {
     // Generate PID
     $this->pid = uniqid();
     $this->active = true;
-    save();
+    $this->save();
   }
 
   // Play
@@ -105,14 +107,8 @@ class Game {
     if(empty($strategy)) {
       throw new StrategyMissingException;
     }
- 
-    $strategies = [
-      self::Random, 
-      self::Sweep, 
-      self::Smart
-    ];
-    
-    if(!in_array($strategy, $strategies)) {    
+
+    if(!in_array($strategy, self::$strategies)) {    
       throw new UnknownStrategyException;
     }
     
@@ -153,6 +149,7 @@ class Game {
     // Gather Computer Data
     $computer = $this->getComputerPlayer();
     $computer_ships = $computer->getShips();
+    $computer_shots = $computer->getShots();
     $computer_strategy = $computer->getStrategy();
     $computer_extra = $computer_strategy->getExtras();
     
@@ -167,7 +164,7 @@ class Game {
         "strategy" => (String) $computer_strategy,
         "extra" => $computer_extra
       ],
-      "active" = $this->active
+      "active" => $this->active
     ];
     
     // Persist changes
@@ -202,7 +199,7 @@ class Game {
     $this->board = $board;
 
     // Set game state
-    $this->active = $data["active"]
+    $this->active = $data["active"];
   }
   
   // Helper method to access player ID

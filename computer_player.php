@@ -10,6 +10,10 @@ class ComputerPlayer extends Player {
     $this->strategy = $strategy;
   }
 
+  public function getStrategy() {
+    return $this->strategy;
+  }
+
   public function makeShot() {
     return ["x" => 0, "y" => 0];
   }
