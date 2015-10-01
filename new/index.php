@@ -5,7 +5,8 @@ $strategy = $_GET['strategy'];
 $ships = $_GET['ships'];
 
 try {
-  $game = new Game($strategy, $ships);
+  $game = new Game;
+  $game->create($strategy, $ships);
   echo json_encode(["response" => true, "pid" => $game->getPlayerID()]);
 } 
 catch(GameException $e) {

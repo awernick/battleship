@@ -33,9 +33,9 @@ class Game {
   // Properties
   private $board;
   private $pid;
+  private $active;
 
-
-  public function Game($strategy, $ships = null){
+  public function create($strategy, $ships = null){
     $strategy = self::validateStrategy($strategy);
     
     // Generate ship placement if ships are not present,
@@ -62,17 +62,15 @@ class Game {
     
     // Generate PID
     $this->pid = uniqid();
+    $this->active = true;
+    save();
   }
 
   // Play
-  public function play($pid){
+  public static function play($pid){
     // Load game based on PID
   }
   
-  // Helper method to access player ID
-  public function getPlayerID(){
-    return $this->pid;
-  }
   
   // Class/Static functions
   public static function info() {
@@ -97,10 +95,68 @@ class Game {
     return new RandomStrategy;
   }
 
+  public static function validatePID($pid) { 
+  }
+
+
+
   public static function validateShipPlacement($shipPlacement) {
       
   }
 
   public static function generateShipPlacement(){
+  }
+
+  public function save(){
+    // TODO: 
+    //  - Throw exception if $pid is not set
+    //  - Throw exception if players not set
+    //  - Throw exception if board not set
+
+
+    // Gather Human Data
+    $human = $this->getHumanPlayer();
+    $human_ships = $human->getShips();
+    $human_shots = $human->getShots();
+    
+    // Gather Computer Data
+    $computer = $this->getComputerPlayer();
+    $computer_ships = $computer->getShips();
+    $computer_strategy = $computer->getStrategy();
+    $computer_extra = $computer_strategy->getExtras();
+    
+    $json_data = [
+      "human" => [
+        "ships" => $human_ships,
+        "shots" => $human_shots
+      ],
+      "computer" => [
+        "ships" => $computer_ships,
+        "shots" => $computer_shots,
+        "strategy" => (String) $computer_strategy,
+        "extra" => $computer_extra
+      ],
+      "active" = $this->active
+    ];
+    
+    // Persist changes
+    $file = fopen("{$this->pid}.json", 'w');
+    fwrite($file, json_encode($json_data));
+    fclose($file);
+  }
+  
+  // Helper method to access player ID
+  public function getPlayerID(){
+    return $this->pid;
+  }
+  
+  // Helper method to get the human player
+  public function getHumanPlayer(){
+    return $this->board->getHumanPlayer();
+  }
+  
+  // Helper method to get the computer player
+  public function getComputerPlayer(){
+    return $this->board->getComputerPlayer();
   }
 }
