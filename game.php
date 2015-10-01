@@ -67,8 +67,32 @@ class Game {
   }
 
   // Play
-  public static function play($pid){
+  public function play($pid, $shot){
     // Load game based on PID
+    
+    // TODO: Possibly get rid of validate methods, 
+    // and delegate responsability to getters and setters.
+    self::validatePlayerID($pid);
+
+    $this->pid = $pid;
+    
+    // Restore game state
+    load();
+
+    // Probably not going to be used, but throw 
+    // exception if the game has ended already
+    if($this->active === false) {
+      throw new GameEndedException;
+    }
+    
+    // Set human shot 
+    $this->getHumanPlayer()->setShot($shot);
+
+    // Play turn
+    $response = $this->board->playTurn();
+
+    // Persist turn
+    save();
   }
   
   
@@ -81,11 +105,11 @@ class Game {
     if(empty($strategy)) {
       throw new StrategyMissingException;
     }
-
+ 
     $strategies = [
       self::Random, 
       self::Sweep, 
-      self::Smart 
+      self::Smart
     ];
     
     if(!in_array($strategy, $strategies)) {    
@@ -95,7 +119,14 @@ class Game {
     return new RandomStrategy;
   }
 
-  public static function validatePID($pid) { 
+  public static function validatePlayerID($pid) {
+    if(empty($pid)) {
+      throw new PidMissingException;
+    }
+
+    if(!file_exists("$pid.json")) {
+      throw new UnknownPidException;
+    } 
   }
 
 
@@ -143,6 +174,35 @@ class Game {
     $file = fopen("{$this->pid}.json", 'w');
     fwrite($file, json_encode($json_data));
     fclose($file);
+  }
+
+  public function load() {
+    // Load data from persistance file
+    $json_data = file_get_contents("{$this->pid}.json");
+    $data = json_decode($json_data, true);
+    $human_data = $data["human"];
+    $computer_data = $data["computer"];
+    
+    // Load human player
+    $human_ships = $human_data["ships"];
+    $human_shots = $human_data["shots"];
+    $human = new HumanPlayer;
+
+    // Load computer player
+    $computer_ships = $computer_data["ships"];
+    $computer_shots = $computer_data["shots"];
+    $computer_strategy = $computer_data["strategy"];
+    $computer_extra = $computer_data["extra"];
+    $computer = new ComputerPlayer;
+
+    // Reset the board
+    $board = new Board;
+    $board->setHumanPlayer($human);
+    $board->setComputerPlayer($computer);
+    $this->board = $board;
+
+    // Set game state
+    $this->active = $data["active"]
   }
   
   // Helper method to access player ID
