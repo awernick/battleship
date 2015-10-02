@@ -17,12 +17,12 @@ class Game {
   const Sweep = "sweep";
   const Smart = "smart";
   
- // static $strategies = [SmartStrategy::getName(), RandomStrategy::getName(), SweepStrategy::getName()];
+  static $strategies = [self::Random, self::Sweep, self::Smart];
 
   // Class variables
   static $options = [
     "size" => Board::SIZE, 
-    "strategies" => [SmartStrategy::$name, RandomStrategy::$name, SweepStrategy::$name],
+    "strategies" => [self::Random, self::Sweep, self::Smart],
     "ships" => [
       ["name" => AircraftCarrier::NAME, "size" => AircraftCarrier::SIZE],
       ["name" => Battleship::NAME, "size" => Battleship::SIZE],
@@ -45,7 +45,7 @@ class Game {
     if(empty($ships)){
       $ships = self::generateShipPlacement();
     } else {
-      self::validateShipPlacement($ships);
+      $ships = self::assembleShips($ships);
     }
     
     // Setup Human Player 
@@ -112,6 +112,7 @@ class Game {
       throw new UnknownStrategyException;
     }
     
+    // TODO: return appropriate strategy 
     return new RandomStrategy;
   }
 
@@ -127,11 +128,156 @@ class Game {
 
 
 
-  public static function validateShipPlacement($shipPlacement) {
+  public static function assembleShips($shipPlacement) {
+    $ship_names = [
+      AircraftCarrier::NAME => "AircraftCarrier", 
+      Battleship::NAME => "Battleship",
+      Frigate::NAME => "Frigate", 
+      Submarine::NAME => "Submarine", 
+      Minesweeper::NAME => "Minesweeper"
+    ];
+
+    $remaining_names = array_keys($ship_names);
+    
+    $ship_configs = explode(';', $shipPlacement);
+    
+    // Store completed ships
+    $ships = [];
+
+    // Validate that 5 ships were sent 
+    if(count($ship_configs) < 5){
+      throw new IncompleteShipPlacementException;
+    }
+
+    foreach($ship_configs as $ship_config) {
+      // Separate ship attributes into an array
+      $ship_attrs = explode(',',$ship_config);
       
+      // Ensure that only 4 attributes where passed
+      if(count($ship_attrs) > 4 || count($ship_attrs) < 4) {
+        throw new MalformedShipPlacementException;
+      }
+
+      $name = $ship_attrs[0];
+      $x = $ship_attrs[1]; 
+      $y = $ship_attrs[2];
+      $dir = $ship_attrs[3];
+      
+      // Verify ship names
+      if(empty($ship_names[$name])) {
+        throw new UnknownShipException;
+      }
+
+      // Check that ships are not repeated
+      $index = array_search($name, $remaining_names);
+      if($index === false) {
+        throw new MalformedShipPlacementException;
+      } else {
+        unset($remaining_names[$index]);
+      }
+
+      // Make sure that a direction was sent and convert 
+      // the string representation to a boolean
+      if($dir != 'true' && $dir != 'false') {
+        throw new InvalidShipDirectionException;
+      } else {
+        $dir = $dir === 'true' ? true : false;
+      }
+      
+
+      // Verify that coordinates provided are correct
+      foreach([$x, $y] as $coord) {
+        // Range check
+        if($coord < 1 || $coord > 10) {
+          throw new InvalidShipPositionException;
+        }
+      }
+
+      // Create corresponding ship class
+      $ship = new $ship_names[$name];
+      
+      // Make sure battleship is not bigger than the board
+      $start = $dir === true ? $x : $y; 
+      if($start + $ship::SIZE > Board::SIZE) {
+        throw new InvalidShipPositionException;
+      }
+      
+      // Generate coordinates for 
+      $coordinates = [];
+      for($i = 0; $i < $ship::SIZE; $i++) {
+        if($dir === true) {
+          $coord = [$x + $i, $y];
+        } else {
+          $coord = [$x, $y + $i];
+        }
+        array_push($coordinates, $coord);
+      }
+      
+      // Update ship
+      $ship->setCoordinates($coordinates);
+
+      // Store if everything is alright up to now
+      array_unshift($ships, $ship);
+    }
+
+    // Check for conflicts
+    for($i = 0; $i < count($ships); $i++) {
+      $current = $ships[$i];
+      $current_coordinates = $current->getCoordinates();
+      for($j = $i+1; $j < (count($ships)); $j++){
+        $another = $ships[$j];
+        $another_coordinates = $another->getCoordinates();
+        for($k = 0; $k < count($another_coordinates); $k++) {
+          $another_coord = $another_coordinates[$k];
+          for($l = 0; $l < count($current_coordinates); $l++){
+            $current_coord = $current_coordinates[$l];
+            if($another_coord[0]  == $current_coord[0] && $another_coord[1]  == $current_coord[1] ) {
+              throw new ConflictingShipPlacementException;
+            }
+          }
+        }
+      }
+    }
+
+    return $ships;
   }
 
   public static function generateShipPlacement(){
+    $ship_sizes = [
+      "Battleship" => Battleship::SIZE, 
+      "Frigate" => Frigate::SIZE, 
+      "Submarine" => Submarine::SIZE, 
+      "Aircraft carrier" => AircraftCarrier::SIZE, 
+      "Minesweeper" => Minesweeper::SIZE
+    ];
+    
+    $valid = false;
+    $ships;
+    do {
+      $ship_configs = [];
+      foreach($ship_sizes as $name => $size) {
+        $dir = rand(0,1) ? 'true' : 'false';
+        if($dir === 'true') {
+          $x = rand(1, (Board::SIZE - $size));
+          $y = rand(1, 10);
+        }
+        else {
+          $y = rand(1, (Board::SIZE - $size));
+          $x = rand(1, 10);
+        }
+        array_push($ship_configs, "$name,$x,$y,$dir");
+      }
+       
+      
+      try {
+        $ships = self::assembleShips(implode($ship_configs, ";"));
+        $valid = true;
+      } catch (GameException $e) {
+        $valid = false;
+      }
+    } while(!$valid);
+
+    return $ships; 
   }
 
   public function save(){

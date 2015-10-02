@@ -5,7 +5,7 @@ abstract class Strategy {
     // NOOP
   }
 
-  public static function getName(){
-    return self::$name;
+  public function __toString(){
+    return (String) $this->name;  
   }
 }
